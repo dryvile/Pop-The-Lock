@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pop the Lock Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<style>
+:root {
+--line: hsl(343, 80%, 54%);
+--notch: hsl(48, 83%, 59%);
+--fail: hsl(0, 64%, 61%);
+}
+
+@keyframes appear-a {
+from {
+transform: scale(0);
+}
+to {
+transform: scale(1);
+}
+}
+
+@keyframes appear-b {
+from {
+transform: scale(0);
+}
+to {
+transform: scale(1);
+}
+}
+
+@keyframes fail {
+0% {
+transform: rotate(0);
+}
+25% {
+transform: rotate(-2deg);
+}
+50% {
+transform: rotate(0);
+}
+75% {
+transform: rotate(2deg);
+}
+100% {
+transform: rotate(0);
+}
+}
+
+@keyframes next {
+0% {
+transform: translateX(0);
+}
+25% {
+transform: translateX(0);
+}
+49.8% {
+opacity: 1;
+}
+49.9% {
+opacity: 0;
+transform: translateX(-100%);
+}
+50.1% {
+opacity: 0;
+transform: translateX(100%);
+}
+50.2% {
+opacity: 1;
+}
+75% {
+transform: translateX(0);
+}
+100% {
+transform: translateX(0);
+}
+}
+
+@keyframes unlock {
+0% {
+transform: translateX(-50%) translateY(0);
+}
+20% {
+transform: translateX(-50%) translateY(12px);
+}
+100% {
+transform: translateX(-50%) translateY(-64px);
+}
+}
+
+html, body {
+height: 100%;
+margin: 0;
+padding: 0;
+touch-action: manipulation;
+}
+
+body {
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+font-family: 'Fredoka', 'Comfortaa', 'Varela Round', sans-serif;
+min-width: 352px;
+transition: background-color 0.5s;
+overflow: hidden;
+}
+
+* {
+user-select: none;
+-webkit-user-select: none;
+-webkit-touch-callout: none;
+}
+
+body.fail {
+background: var(--fail) !important;
+}
+
+#game-container.fail {
+animation: fail 0.5s ease-in-out;
+}
+
+.next {
+animation: next 2s ease-in-out;
+}
+
+.unlock {
+animation: unlock 0.5s ease-in-out forwards;
+}
+
+#label {
+position: absolute;
+top: 24px;
+left: 24px;
+text-transform: uppercase;
+font-size: 38px;
+font-weight: 700;
+height: auto;
+color: rgba(255, 255, 255, 0.65);
+letter-spacing: 1px;
+}
+
+#game-container {
+position: relative;
+width: 288px;
+height: 380px;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: flex-end;
+}
+
+#shackle {
+position: absolute;
+top: -60px;
+left: 50%;
+transform: translateX(-50%);
+height: 238px;
+width: 188px;
+margin: 0 auto -24px auto;
+opacity: 0.6;
+display: block;
+overflow: visible;
+z-index: 1;
+}
+
+#lock {
+position: absolute;
+bottom: 0;
+left: 50%;
+transform: translateX(-50%);
+height: 192px;
+width: 192px;
+border: 48px solid;
+border-radius: 50%;
+line-height: 192px;
+text-align: center;
+font-size: 110px;
+font-weight: 700;
+color: rgba(255, 255, 255, 0.5);
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+z-index: 2;
+box-sizing: content-box;
+}
+
+#lock-title {
+font-size: 24px;
+line-height: 1.2;
+}
+
+#lock-subtitle {
+font-size: 16px;
+line-height: 1.2;
+margin-top: 4px;
+}
+
+.dial {
+position: absolute;
+bottom: 0;
+left: 50%;
+transform: translateX(-50%);
+height: 288px;
+width: 288px;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: flex-start;
+z-index: 3;
+pointer-events: none;
+}
+
+#line {
+margin: 2px auto;
+height: 44px;
+width: 12px;
+border-radius: 6px;
+background: var(--line);
+}
+
+#notch {
+margin: 10px;
+height: 28px;
+width: 28px;
+border-radius: 50%;
+background: var(--notch);
+}
+
+.appear-a {
+animation: appear-a 0.1s;
+}
+
+.appear-b {
+animation: appear-b 0.1s !important;
+}
+</style>
+</head>
+<body>
+
+<section id="label">
+<div>LEVEL: <span id="level"></span></div>
+</section>
+
+<div id="game-container">
+<svg id="shackle" viewBox="0 0 188 176">
+<path d="M 24 152 V 92 A 70 70 0 0 1 164 92 V 152" fill="none" stroke="currentColor" stroke-width="48" stroke-linecap="round" />
+</svg>
+
+<div id="notch-dial" class="dial">
+<div id="notch" class="appear-a"></div>
+</div>
+<div id="line-dial" class="dial">
+<div id="line"></div>
+</div>
+
+<div id="lock"></div>
+</div>
+
+<script>
+// Audio Context Setup
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+
+function initAudio() {
+if (!audioCtx) {
+audioCtx = new AudioContext();
+} else if (audioCtx.state === 'suspended') {
+audioCtx.resume();
+}
+}
+
+function playPopSound() {
+initAudio();
+if (!audioCtx) return;
+
+// Warm, gentle pure sine drop
+const osc = audioCtx.createOscillator();
+const gain = audioCtx.createGain();
+
+osc.type = 'sine';
+osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+osc.frequency.exponentialRampToValueAtTime(220, audioCtx.currentTime + 0.12);
+
+gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+
+osc.connect(gain);
+gain.connect(audioCtx.destination);
+
+osc.start();
+osc.stop(audioCtx.currentTime + 0.12);
+}
+
+function playUnlockSound() {
+initAudio();
+if (!audioCtx) return;
+
+// Lively yet calm rising synth drops (same sound style as playPopSound)
+const notes = [
+{ startFreq: 330, endFreq: 220 }, // E4 -> A3
+{ startFreq: 440, endFreq: 293 }, // A4 -> D4
+{ startFreq: 554, endFreq: 370 }, // C#5 -> F#4
+{ startFreq: 659, endFreq: 440 }  // E5 -> A4
+];
+
+notes.forEach((note, index) => {
+const startTime = audioCtx.currentTime + (index * 0.08);
+
+const osc = audioCtx.createOscillator();
+const gain = audioCtx.createGain();
+
+osc.type = 'sine';
+osc.frequency.setValueAtTime(note.startFreq, startTime);
+osc.frequency.exponentialRampToValueAtTime(note.endFreq, startTime + 0.14);
+
+gain.gain.setValueAtTime(0.14, startTime);
+gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.14);
+
+osc.connect(gain);
+gain.connect(audioCtx.destination);
+
+osc.start(startTime);
+osc.stop(startTime + 0.14);
+});
+}
+
+function playFailSound() {
+initAudio();
+if (!audioCtx) return;
+
+// Calm, gentle minor descending synth drop
+const notes = [
+{ startFreq: 311.13, endFreq: 155.56 }, // Eb4 -> Eb3
+{ startFreq: 293.66, endFreq: 146.83 }  // D4 -> D3
+];
+
+notes.forEach((note, index) => {
+const startTime = audioCtx.currentTime + (index * 0.12);
+
+const osc = audioCtx.createOscillator();
+const gain = audioCtx.createGain();
+
+osc.type = 'sine';
+osc.frequency.setValueAtTime(note.startFreq, startTime);
+osc.frequency.exponentialRampToValueAtTime(note.endFreq, startTime + 0.22);
+
+gain.gain.setValueAtTime(0.15, startTime);
+gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.22);
+
+osc.connect(gain);
+gain.connect(audioCtx.destination);
+
+osc.start(startTime);
+osc.stop(startTime + 0.22);
+});
+}
+
+// config
+const baseSpeed = 0.035; // Standard manageable rotational speed
+const notchWidth = 0.18; // Slightly expanded hit window to match human reaction time
+
+let level = 1;
+let count = 1;
+let status = "start";
+let linePosition = 0;
+let notchPosition = 0;
+let clockwise = true;
+
+const colors = {
+green: {
+body: "hsl(168, 75%, 42%)",
+lock: "hsl(210, 61%, 18%)"
+},
+violet: {
+body: "hsl(267, 35%, 39%)",
+lock: "hsl(220, 86%, 11%)"
+},
+orange: {
+body: "hsl(24, 62%, 53%)",
+lock: "hsl(35, 20%, 12%)"
+},
+blue: {
+body: "hsl(186, 85%, 37%)",
+lock: "hsl(32, 67%, 8%)"
+},
+olive: {
+body: "hsl(55, 16%, 41%)",
+lock: "hsl(0, 0%, 0%)"
+}
+};
+// end config
+
+function getInstructionText() {
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+return isTouchDevice ? "Tap Screen" : "Press Space";
+}
+
+function setColor(color) {
+$("body").css({ "background": colors[color].body });
+$("#lock").css({ "border-color": colors[color].lock });
+$("#shackle").css({ "color": colors[color].lock });
+}
+
+function newNotch() {
+notchPosition = (((Math.random() * 0.65 * Math.PI) + 0.35 * Math.PI) * ((clockwise * 2) - 1)) + linePosition;
+$("#notch-dial").css({
+"transform": "translateX(-50%) rotate(" + notchPosition + "rad)"
+});
+$("#notch").show();
+$("#notch").toggleClass("appear-b");
+}
+
+function setStatus(newStatus) {
+status = newStatus;
+switch (newStatus) {
+case "start":
+if (level < 10) setColor("green");
+else if (level < 20) setColor("violet");
+else if (level < 30) setColor("orange");
+else if (level < 40) setColor("blue");
+else setColor("olive");
+count = level;
+$("#lock").html('<div id="lock-title">Pop The Lock</div><div id="lock-subtitle">' + getInstructionText() + '</div>');
+linePosition = 0;
+clockwise = true;
+newNotch();
+$("body").removeClass("fail");
+$("#game-container").removeClass("fail");
+break;
+case "move":
+break;
+case "fail":
+playFailSound();
+$("#notch").hide();
+$("body").addClass("fail");
+$("#game-container").addClass("fail");
+break;
+case "win":
+playUnlockSound();
+$("#notch").hide();
+$("body").addClass("next");
+$("#shackle").addClass("unlock");
+setTimeout(() => {
+setLevel(level + 1);
+setStatus("start");
+$("#shackle").removeClass("unlock");
+}, 1000);
+setTimeout(() => {
+$("body").removeClass("next");
+}, 2000);
+break;
+}
+}
+
+function setCount(newCount) {
+count = newCount;
+$("#lock").text(count);
+}
+
+function setLevel(newLevel) {
+level = newLevel;
+$("#level").text(level);
+try {
+window.localStorage.setItem("level", level);
+} catch (e) {
+console.warn("LocalStorage is unavailable:", e);
+}
+}
+
+function click(event) {
+if (event && event.type === "keydown" && event.code !== "Space") {
+return;
+}
+if (event && event.type === "keydown" && event.code === "Space") {
+event.preventDefault();
+}
+
+switch (status) {
+case "start":
+setStatus("move");
+setCount(count);
+break;
+case "move":
+if (Math.abs(Math.atan2(Math.sin(linePosition - notchPosition), Math.cos(linePosition - notchPosition))) < notchWidth) {
+playPopSound();
+setCount(count - 1);
+if (count === 0) {
+setStatus("win");
+} else {
+clockwise = !clockwise;
+newNotch();
+}
+} else {
+setStatus("fail");
+}
+break;
+case "fail":
+setStatus("start");
+break;
+case "win":
+setStatus("start");
+break;
+}
+}
+
+function step() {
+if (status === "move") {
+// Capped speed calculation to ensure high levels remain physically reactable
+let currentSpeed = baseSpeed + Math.min(0.015, (level / 1000) * 0.01);
+linePosition += currentSpeed * (clockwise * 2 - 1);
+$("#line-dial").css({
+"transform": "translateX(-50%) rotate(" + linePosition + "rad)"
+});
+if ((Math.atan2(Math.sin(linePosition - notchPosition), Math.cos(linePosition - notchPosition))) * (clockwise * 2 - 1) > notchWidth) {
+setStatus("fail");
+}
+}
+window.requestAnimationFrame(step);
+}
+
+window.requestAnimationFrame(step);
+window.addEventListener("mousedown", click);
+window.addEventListener("touchstart", (event) => {
+event.preventDefault();
+click(event);
+}, { passive: false });
+window.addEventListener("keydown", (event) => {
+if (status === "start" && event.code === "Space") {
+$("#lock-subtitle").text("Press Space");
+}
+click(event);
+});
+
+let savedLevel = 1;
+try {
+savedLevel = parseInt(window.localStorage.getItem("level"), 10) || 1;
+} catch (e) {
+console.warn("LocalStorage access failed:", e);
+}
+setLevel(savedLevel);
+setStatus("start");
+</script>
+</body>
+</html>
