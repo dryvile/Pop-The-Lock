@@ -263,6 +263,9 @@ animation: appear-b 0.1s !important;
 </div>
 
 <script>
+(() => {
+'use strict';
+
 // Audio Context Setup
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
@@ -394,14 +397,14 @@ body: "hsl(55, 16%, 41%)",
 lock: "hsl(0, 0%, 0%)"
 }
 };
-// end config
+// end config 
 
 function getInstructionText() {
 const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 return isTouchDevice ? "Tap Screen" : "Press Space";
 }
 
-function setColor(color) {
+function setColor(color) { 
 $("body").css({ "background": colors[color].body });
 $("#lock").css({ "border-color": colors[color].lock });
 $("#shackle").css({ "color": colors[color].lock });
@@ -455,7 +458,7 @@ setTimeout(() => {
 $("body").removeClass("next");
 }, 2000);
 break;
-}
+} 
 }
 
 function setCount(newCount) {
@@ -474,6 +477,11 @@ console.warn("LocalStorage is unavailable:", e);
 }
 
 function click(event) {
+// Prevent script-based artificial clicks
+if (event && !event.isTrusted) {
+return;
+}
+
 if (event && event.type === "keydown" && event.code !== "Space") {
 return;
 }
@@ -527,10 +535,13 @@ window.requestAnimationFrame(step);
 window.requestAnimationFrame(step);
 window.addEventListener("mousedown", click);
 window.addEventListener("touchstart", (event) => {
+if (event.isTrusted) {
 event.preventDefault();
 click(event);
+}
 }, { passive: false });
 window.addEventListener("keydown", (event) => {
+if (!event.isTrusted) return;
 if (status === "start" && event.code === "Space") {
 $("#lock-subtitle").text("Press Space");
 }
@@ -545,6 +556,7 @@ console.warn("LocalStorage access failed:", e);
 }
 setLevel(savedLevel);
 setStatus("start");
+})();
 </script>
 </body>
 </html>
