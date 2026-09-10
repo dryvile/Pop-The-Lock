@@ -453,14 +453,30 @@ audioCtx.resume();
 }
 }
 
-function triggerHaptic() {
-if (isMobileOrTablet && vibrationEnabled && navigator.vibrate) {
-navigator.vibrate(50);
+function triggerHaptic(type = "light") {
+if (isMobileOrTablet && vibrationEnabled) {
+// 1. Try standard Navigator.vibrate (Android Chrome, Firefox, etc.)
+if (navigator.vibrate) {
+if (type === "heavy") {
+navigator.vibrate([40, 30, 40]);
+} else if (type === "medium") {
+navigator.vibrate(70);
+} else {
+navigator.vibrate(30);
+}
+}
+
+// 2. Fallback attempt for WebKit / iOS Safari Haptics (if supported by platform)
+if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.haptic) {
+try {
+window.webkit.messageHandlers.haptic.postMessage(type);
+} catch (e) {}
+}
 }
 }
 
 function playPopSound() {
-triggerHaptic();
+triggerHaptic("light");
 if (!soundEnabled) return;
 initAudio();
 if (!audioCtx) return;
@@ -484,7 +500,7 @@ osc.stop(audioCtx.currentTime + 0.12);
 }
 
 function playUnlockSound() {
-triggerHaptic();
+triggerHaptic("heavy");
 if (!soundEnabled) return;
 initAudio();
 if (!audioCtx) return;
@@ -519,7 +535,7 @@ osc.stop(startTime + 0.14);
 }
 
 function playFailSound() {
-triggerHaptic();
+triggerHaptic("medium");
 if (!soundEnabled) return;
 initAudio();
 if (!audioCtx) return;
@@ -717,6 +733,9 @@ e.stopPropagation();
 e.preventDefault();
 vibrationEnabled = !vibrationEnabled;
 $("#vibration-toggle-btn").text("Vibration: " + (vibrationEnabled ? "On" : "Off"));
+if (vibrationEnabled) {
+triggerHaptic("light");
+}
 try {
 window.localStorage.setItem("vibrationEnabled", vibrationEnabled);
 } catch (err) {
