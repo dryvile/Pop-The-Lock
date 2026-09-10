@@ -388,7 +388,6 @@ animation: appear-b 0.1s !important;
 <div class="modal-card">
 <h2>SETTINGS</h2>
 <div id="sound-toggle-btn" class="setting-btn-pill">Sound: On</div>
-<div id="vibration-toggle-btn" class="setting-btn-pill">Vibration: On</div>
 <div class="level-select-row">
 <div id="level-prev" class="arrow-btn">
 <svg viewBox="0 0 24 24"><path d="M16 5.5l-9 6.5 9 6.5z" stroke="#4a4a4a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -425,25 +424,17 @@ animation: appear-b 0.1s !important;
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 let soundEnabled = true;
-let vibrationEnabled = true;
 
 try {
 const savedSound = window.localStorage.getItem("soundEnabled");
 if (savedSound !== null) soundEnabled = savedSound === "true";
-const savedVib = window.localStorage.getItem("vibrationEnabled");
-if (savedVib !== null) vibrationEnabled = savedVib === "true";
 } catch (e) {
 console.warn("LocalStorage access failed:", e);
 }
 
 $("#sound-toggle-btn").text("Sound: " + (soundEnabled ? "On" : "Off"));
-$("#vibration-toggle-btn").text("Vibration: " + (vibrationEnabled ? "On" : "Off"));
 
 const isMobileOrTablet = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-
-if (!isMobileOrTablet) {
-$("#vibration-toggle-btn").hide();
-}
 
 function initAudio() {
 if (!audioCtx) {
@@ -453,30 +444,7 @@ audioCtx.resume();
 }
 }
 
-function triggerHaptic(type = "light") {
-if (isMobileOrTablet && vibrationEnabled) {
-// 1. Try standard Navigator.vibrate (Android Chrome, Firefox, etc.)
-if (navigator.vibrate) {
-if (type === "heavy") {
-navigator.vibrate([40, 30, 40]);
-} else if (type === "medium") {
-navigator.vibrate(70);
-} else {
-navigator.vibrate(30);
-}
-}
-
-// 2. Fallback attempt for WebKit / iOS Safari Haptics (if supported by platform)
-if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.haptic) {
-try {
-window.webkit.messageHandlers.haptic.postMessage(type);
-} catch (e) {}
-}
-}
-}
-
 function playPopSound() {
-triggerHaptic("light");
 if (!soundEnabled) return;
 initAudio();
 if (!audioCtx) return;
@@ -500,7 +468,6 @@ osc.stop(audioCtx.currentTime + 0.12);
 }
 
 function playUnlockSound() {
-triggerHaptic("heavy");
 if (!soundEnabled) return;
 initAudio();
 if (!audioCtx) return;
@@ -535,7 +502,6 @@ osc.stop(startTime + 0.14);
 }
 
 function playFailSound() {
-triggerHaptic("medium");
 if (!soundEnabled) return;
 initAudio();
 if (!audioCtx) return;
@@ -723,21 +689,6 @@ soundEnabled = !soundEnabled;
 $("#sound-toggle-btn").text("Sound: " + (soundEnabled ? "On" : "Off"));
 try {
 window.localStorage.setItem("soundEnabled", soundEnabled);
-} catch (err) {
-console.warn("LocalStorage failed:", err);
-}
-});
-
-$("#vibration-toggle-btn").on("click touchstart", (e) => {
-e.stopPropagation();
-e.preventDefault();
-vibrationEnabled = !vibrationEnabled;
-$("#vibration-toggle-btn").text("Vibration: " + (vibrationEnabled ? "On" : "Off"));
-if (vibrationEnabled) {
-triggerHaptic("light");
-}
-try {
-window.localStorage.setItem("vibrationEnabled", vibrationEnabled);
 } catch (err) {
 console.warn("LocalStorage failed:", err);
 }
