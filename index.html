@@ -15,22 +15,30 @@
 --fail: hsl(0, 64%, 61%);
 }
 
-@keyframes appear-a {
-from {
+@keyframes pop-a {
+0% {
 transform: scale(0);
 }
-to {
+100% {
 transform: scale(1);
 }
 }
 
-@keyframes appear-b {
-from {
+@keyframes pop-b {
+0% {
 transform: scale(0);
 }
-to {
+100% {
 transform: scale(1);
 }
+}
+
+.appear-a {
+animation: pop-a 0.25s ease-out;
+}
+
+.appear-b {
+animation: pop-b 0.25s ease-out !important;
 }
 
 @keyframes fail {
@@ -148,6 +156,23 @@ display: flex;
 align-items: center;
 }
 
+#timer-display {
+position: fixed;
+top: max(12px, 2vh);
+left: 50%;
+transform: translateX(-50%);
+text-transform: uppercase;
+font-size: min(38px, 5vh);
+line-height: min(38px, 5vh);
+font-weight: 700;
+height: min(38px, 5vh);
+color: rgba(255, 255, 255, 0.65);
+letter-spacing: 1px;
+z-index: 10;
+display: none;
+align-items: center;
+}
+
 #settings-btn {
 position: fixed;
 top: max(12px, 2vh);
@@ -191,7 +216,7 @@ background: #ffffff;
 border-radius: 40px;
 width: 100%;
 height: 100%;
-padding: 40px 24px;
+padding: 30px 24px;
 box-sizing: border-box;
 display: flex;
 flex-direction: column;
@@ -215,9 +240,9 @@ width: 100%;
 max-width: 400px;
 background: #e9e9e9;
 border-radius: 28px;
-padding: 18px 0;
+padding: 14px 0;
 text-align: center;
-font-size: min(24px, 5.5vw);
+font-size: min(22px, 5vw);
 font-weight: 700;
 color: #333333;
 cursor: pointer;
@@ -236,7 +261,7 @@ background: #e9e9e9;
 border: none;
 border-radius: 28px;
 width: 32%;
-height: min(64px, 14vw);
+height: min(54px, 12vw);
 display: flex;
 align-items: center;
 justify-content: center;
@@ -262,7 +287,7 @@ width: 100%;
 max-width: 300px;
 background: #505050;
 border-radius: 28px;
-padding: 16px 0;
+padding: 14px 0;
 text-align: center;
 font-size: min(22px, 5vw);
 font-weight: 700;
@@ -281,6 +306,41 @@ align-items: center;
 justify-content: flex-end;
 transform: scale(min(1, min(80vw / 288, 80vh / 440)));
 transform-origin: center center;
+}
+
+/* Responsive Adjustments for Landscape Mode */
+@media (orientation: landscape) and (max-height: 550px) {
+#label, #timer-display, #settings-btn {
+top: max(8px, 1.5vh);
+font-size: min(24px, 6vh);
+line-height: min(24px, 6vh);
+height: min(24px, 6vh);
+}
+
+#settings-btn {
+width: min(24px, 6vh);
+}
+
+#game-container {
+margin-top: 20px;
+transform: scale(min(0.85, min(70vw / 288, 65vh / 440)));
+}
+
+.modal-card {
+padding: 16px;
+border-radius: 24px;
+}
+
+.setting-btn-pill, .close-btn {
+padding: 8px 0;
+font-size: min(16px, 4vh);
+border-radius: 18px;
+}
+
+.arrow-btn {
+height: min(38px, 8vh);
+border-radius: 18px;
+}
 }
 
 #shackle {
@@ -360,35 +420,31 @@ width: 28px;
 border-radius: 50%;
 background: var(--notch);
 }
-
-.appear-a {
-animation: appear-a 0.1s;
-}
-
-.appear-b {
-animation: appear-b 0.1s !important;
-}
 </style>
 </head>
 <body>
 
 <section id="label">
-<div>LEVEL: <span id="level"></span></div>
+<div><span id="label-prefix">LEVEL</span>: <span id="level"></span></div>
 </section>
+
+<div id="timer-display"><div>TIME: <span id="time-val">30</span>S</div></div>
 
 <div id="settings-btn">
 <svg viewBox="0 0 24 24">
-<rect x="2" y="3.5" width="20" height="4.5" rx="2.25" />
-<rect x="2" y="9.75" width="20" height="4.5" rx="2.25" />
-<rect x="2" y="16" width="20" height="4.5" rx="2.25" />
+<rect x="2" y="4" width="20" height="3" rx="1.5" />
+<rect x="2" y="10.5" width="20" height="3" rx="1.5" />
+<rect x="2" y="17" width="20" height="3" rx="1.5" />
 </svg>
 </div>
 
 <div id="settings-modal">
 <div class="modal-card">
 <h2>SETTINGS</h2>
+<div id="mode-toggle-btn" class="setting-btn-pill">Mode: Classic</div>
 <div id="sound-toggle-btn" class="setting-btn-pill">Sound: On</div>
-<div class="level-select-row">
+<div id="vibration-toggle-btn" class="setting-btn-pill">Vibration: On</div>
+<div class="level-select-row" id="level-select-container">
 <div id="level-prev" class="arrow-btn">
 <svg viewBox="0 0 24 24"><path d="M16 5.5l-9 6.5 9 6.5z" stroke="#4a4a4a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
 </div>
@@ -424,17 +480,25 @@ animation: appear-b 0.1s !important;
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 let soundEnabled = true;
+let vibrationEnabled = true;
 
 try {
 const savedSound = window.localStorage.getItem("soundEnabled");
 if (savedSound !== null) soundEnabled = savedSound === "true";
+const savedVib = window.localStorage.getItem("vibrationEnabled");
+if (savedVib !== null) vibrationEnabled = savedVib === "true";
 } catch (e) {
 console.warn("LocalStorage access failed:", e);
 }
 
 $("#sound-toggle-btn").text("Sound: " + (soundEnabled ? "On" : "Off"));
+$("#vibration-toggle-btn").text("Vibration: " + (vibrationEnabled ? "On" : "Off"));
 
 const isMobileOrTablet = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+if (!isMobileOrTablet) {
+$("#vibration-toggle-btn").hide();
+}
 
 function initAudio() {
 if (!audioCtx) {
@@ -444,7 +508,12 @@ audioCtx.resume();
 }
 }
 
+function triggerHaptic() {
+// Vibration removed for mobile
+}
+
 function playPopSound() {
+triggerHaptic();
 if (!soundEnabled) return;
 initAudio();
 if (!audioCtx) return;
@@ -468,6 +537,7 @@ osc.stop(audioCtx.currentTime + 0.12);
 }
 
 function playUnlockSound() {
+triggerHaptic();
 if (!soundEnabled) return;
 initAudio();
 if (!audioCtx) return;
@@ -502,6 +572,7 @@ osc.stop(startTime + 0.14);
 }
 
 function playFailSound() {
+triggerHaptic();
 if (!soundEnabled) return;
 initAudio();
 if (!audioCtx) return;
@@ -547,6 +618,22 @@ let notchPosition = 0;
 let clockwise = true;
 let isSettingsOpen = false;
 
+// Game Modes: "classic", "endless", "timeattack"
+let gameMode = "classic";
+let endlessScore = 0;
+let endlessBest = 0;
+let timeAttackScore = 0;
+let timeAttackBest = 0;
+let timeRemaining = 30;
+let timerInterval = null;
+
+try {
+const savedMode = window.localStorage.getItem("gameMode");
+if (savedMode) gameMode = savedMode;
+endlessBest = parseInt(window.localStorage.getItem("endlessBest"), 10) || 0;
+timeAttackBest = parseInt(window.localStorage.getItem("timeAttackBest"), 10) || 0;
+} catch(e) {}
+
 const colors = {
 green: {
 body: "hsl(168, 75%, 42%)",
@@ -569,7 +656,6 @@ body: "hsl(55, 16%, 41%)",
 lock: "hsl(0, 0%, 0%)"
 }
 };
-// end config
 
 function getInstructionText() {
 return isMobileOrTablet ? "Tap Screen" : "Press Space";
@@ -579,6 +665,52 @@ function setColor(color) {
 $("body").css({ "background": colors[color].body });
 $("#lock").css({ "border-color": colors[color].lock });
 $("#shackle").css({ "color": colors[color].lock });
+}
+
+function updateModeUI() {
+if (gameMode === "classic") {
+$("#mode-toggle-btn").text("Mode: Classic");
+$("#label-prefix").text("LEVEL");
+$("#level-select-container").css("display", "flex");
+$("#timer-display").css("display", "none");
+$("#level").text(level);
+} else if (gameMode === "endless") {
+$("#mode-toggle-btn").text("Mode: Endless");
+$("#label-prefix").text("BEST");
+$("#level-select-container").hide();
+$("#timer-display").css("display", "none");
+$("#level").text(endlessBest);
+} else if (gameMode === "timeattack") {
+$("#mode-toggle-btn").text("Mode: Time Attack");
+$("#label-prefix").text("BEST");
+$("#level-select-container").hide();
+$("#timer-display").css("display", "flex");
+$("#time-val").text(timeRemaining);
+$("#level").text(timeAttackBest);
+}
+}
+
+function stopTimer() {
+if (timerInterval) {
+clearInterval(timerInterval);
+timerInterval = null;
+}
+}
+
+function startTimer() {
+stopTimer();
+timeRemaining = 30;
+$("#time-val").text(timeRemaining);
+timerInterval = setInterval(() => {
+if (status === "move" && !isSettingsOpen) {
+timeRemaining--;
+$("#time-val").text(timeRemaining);
+if (timeRemaining <= 0) {
+stopTimer();
+setStatus("fail");
+}
+}
+}, 1000);
 }
 
 function newNotch() {
@@ -594,12 +726,26 @@ function setStatus(newStatus) {
 status = newStatus;
 switch (newStatus) {
 case "start":
+stopTimer();
+if (gameMode === "classic") {
 if (level < 10) setColor("green");
 else if (level < 20) setColor("violet");
 else if (level < 30) setColor("orange");
 else if (level < 40) setColor("blue");
 else setColor("olive");
 count = level;
+} else if (gameMode === "endless") {
+setColor("violet");
+endlessScore = 0;
+count = 0;
+} else if (gameMode === "timeattack") {
+setColor("orange");
+timeAttackScore = 0;
+timeRemaining = 30;
+$("#time-val").text(timeRemaining);
+count = 0;
+}
+
 $("#lock").html('<div id="lock-title">Pop The Lock</div><div id="lock-subtitle">' + getInstructionText() + '</div>');
 linePosition = 0;
 clockwise = true;
@@ -608,14 +754,19 @@ $("body").removeClass("fail");
 $("#game-container").removeClass("fail");
 break;
 case "move":
+if (gameMode === "timeattack" && !timerInterval) {
+startTimer();
+}
 break;
 case "fail":
+stopTimer();
 playFailSound();
 $("#notch").hide();
 $("body").addClass("fail");
 $("#game-container").addClass("fail");
 break;
 case "win":
+stopTimer();
 playUnlockSound();
 $("#notch").hide();
 $("body").addClass("next");
@@ -642,7 +793,9 @@ level = newLevel;
 if (level > maxLevelReached) {
 maxLevelReached = level;
 }
+if (gameMode === "classic") {
 $("#level").text(level);
+}
 try {
 window.localStorage.setItem("level", level);
 window.localStorage.setItem("maxLevel", maxLevelReached);
@@ -664,11 +817,26 @@ setStatus("start");
 function closeSettings() {
 isSettingsOpen = false;
 $("#settings-modal").removeClass("active");
-if (targetSelectLevel !== level) {
+if (targetSelectLevel !== level && gameMode === "classic") {
 setLevel(targetSelectLevel);
 setStatus("start");
 }
 }
+
+$("#mode-toggle-btn").on("click touchstart", (e) => {
+e.stopPropagation();
+e.preventDefault();
+if (gameMode === "classic") gameMode = "endless";
+else if (gameMode === "endless") gameMode = "timeattack";
+else gameMode = "classic";
+
+try {
+window.localStorage.setItem("gameMode", gameMode);
+} catch (err) {}
+
+updateModeUI();
+setStatus("start");
+});
 
 $("#settings-btn").on("click touchstart", (e) => {
 e.stopPropagation();
@@ -689,6 +857,18 @@ soundEnabled = !soundEnabled;
 $("#sound-toggle-btn").text("Sound: " + (soundEnabled ? "On" : "Off"));
 try {
 window.localStorage.setItem("soundEnabled", soundEnabled);
+} catch (err) {
+console.warn("LocalStorage failed:", err);
+}
+});
+
+$("#vibration-toggle-btn").on("click touchstart", (e) => {
+e.stopPropagation();
+e.preventDefault();
+vibrationEnabled = !vibrationEnabled;
+$("#vibration-toggle-btn").text("Vibration: " + (vibrationEnabled ? "On" : "Off"));
+try {
+window.localStorage.setItem("vibrationEnabled", vibrationEnabled);
 } catch (err) {
 console.warn("LocalStorage failed:", err);
 }
@@ -717,7 +897,6 @@ if (isSettingsOpen) {
 return;
 }
 
-// Prevent script-based artificial clicks
 if (event && !event.isTrusted) {
 return;
 }
@@ -732,15 +911,44 @@ event.preventDefault();
 switch (status) {
 case "start":
 setStatus("move");
+if (gameMode === "classic") {
 setCount(count);
+} else {
+setCount(0);
+}
 break;
 case "move":
 if (Math.abs(Math.atan2(Math.sin(linePosition - notchPosition), Math.cos(linePosition - notchPosition))) < notchWidth) {
 playPopSound();
+
+if (gameMode === "classic") {
 setCount(count - 1);
 if (count === 0) {
 setStatus("win");
 } else {
+clockwise = !clockwise;
+newNotch();
+}
+} else if (gameMode === "endless") {
+endlessScore++;
+setCount(endlessScore);
+if (endlessScore > endlessBest) {
+endlessBest = endlessScore;
+$("#level").text(endlessBest);
+try { window.localStorage.setItem("endlessBest", endlessBest); } catch(e){}
+}
+clockwise = !clockwise;
+newNotch();
+} else if (gameMode === "timeattack") {
+timeAttackScore++;
+timeRemaining += 1;
+$("#time-val").text(timeRemaining);
+setCount(timeAttackScore);
+if (timeAttackScore > timeAttackBest) {
+timeAttackBest = timeAttackScore;
+$("#level").text(timeAttackBest);
+try { window.localStorage.setItem("timeAttackBest", timeAttackBest); } catch(e){}
+}
 clockwise = !clockwise;
 newNotch();
 }
@@ -759,8 +967,8 @@ break;
 
 function step() {
 if (status === "move" && !isSettingsOpen) {
-// Capped speed calculation to ensure high levels remain physically reactable
-let currentSpeed = baseSpeed + Math.min(0.015, (level / 1000) * 0.01);
+let speedMultiplier = gameMode === "classic" ? level : (gameMode === "endless" ? endlessScore : timeAttackScore);
+let currentSpeed = baseSpeed + Math.min(0.015, (speedMultiplier / 1000) * 0.01);
 linePosition += currentSpeed * (clockwise * 2 - 1);
 $("#line-dial").css({
 "transform": "translateX(-50%) rotate(" + linePosition + "rad)"
@@ -796,6 +1004,7 @@ maxLevelReached = parseInt(window.localStorage.getItem("maxLevel"), 10) || saved
 console.warn("LocalStorage access failed:", e);
 }
 setLevel(savedLevel);
+updateModeUI();
 setStatus("start");
 })();
 </script>
