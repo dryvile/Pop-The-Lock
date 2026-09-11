@@ -140,62 +140,62 @@ animation: next 2s ease-in-out;
 animation: unlock 0.5s ease-in-out forwards;
 }
 
-#top-bar {
+/* Top left stacked container for score & timer */
+#top-left-container {
 position: fixed;
 top: max(12px, 2vh);
-left: 0;
-width: 100%;
-padding: 0 max(16px, 3vw);
-box-sizing: border-box;
+left: max(12px, 2vw);
 display: flex;
-align-items: center;
-justify-content: space-between;
+flex-direction: column;
+align-items: flex-start;
 z-index: 10;
 pointer-events: none;
 }
 
-#top-bar > * {
-pointer-events: auto;
-}
-
 #label {
+position: relative;
+top: 0;
+left: 0;
 text-transform: uppercase;
-font-size: min(28px, 4.2vw, 4.5vh);
-line-height: 1;
+font-size: min(38px, 5vh);
+line-height: min(38px, 5vh);
 font-weight: 700;
+height: min(38px, 5vh);
 color: rgba(255, 255, 255, 0.65);
-letter-spacing: 0.5px;
+letter-spacing: 1px;
 display: flex;
 align-items: center;
 white-space: nowrap;
-flex-shrink: 1;
-min-width: 0;
 }
 
 #timer-display {
+position: relative;
+top: 0;
+left: 0;
 text-transform: uppercase;
-font-size: min(28px, 4.2vw, 4.5vh);
-line-height: 1;
+font-size: min(38px, 5vh);
+line-height: min(38px, 5vh);
 font-weight: 700;
+height: min(38px, 5vh);
 color: rgba(255, 255, 255, 0.65);
-letter-spacing: 0.5px;
+letter-spacing: 1px;
 display: none;
 align-items: center;
 white-space: nowrap;
-flex-shrink: 0;
-margin: 0 8px;
+margin-top: 4px;
 }
 
 #settings-btn {
-height: min(32px, 4.5vw, 4.5vh);
-width: min(32px, 4.5vw, 4.5vh);
-min-width: 24px;
-min-height: 24px;
+position: fixed;
+top: max(12px, 2vh);
+right: max(12px, 2vw);
+height: min(38px, 5vh);
+width: min(38px, 5vh);
 cursor: pointer;
+z-index: 10;
 display: flex;
 align-items: center;
 justify-content: center;
-flex-shrink: 0;
 }
 
 #settings-btn svg {
@@ -322,17 +322,22 @@ transform-origin: center center;
 
 /* Responsive Adjustments for Landscape Mode */
 @media (orientation: landscape) and (max-height: 550px) {
-#top-bar {
+#top-left-container {
 top: max(8px, 1.5vh);
+left: max(8px, 1.5vw);
 }
 
 #label, #timer-display {
-font-size: min(20px, 5vh);
+font-size: min(24px, 6vh);
+line-height: min(24px, 6vh);
+height: min(24px, 6vh);
 }
 
 #settings-btn {
-width: min(22px, 5vh);
-height: min(22px, 5vh);
+top: max(8px, 1.5vh);
+right: max(8px, 1.5vw);
+width: min(24px, 6vh);
+height: min(24px, 6vh);
 }
 
 #game-container {
@@ -438,12 +443,13 @@ background: var(--notch);
 </head>
 <body>
 
-<div id="top-bar">
+<div id="top-left-container">
 <section id="label">
 <div><span id="label-prefix">LEVEL</span>: <span id="level"></span></div>
 </section>
 
 <div id="timer-display"><div>TIME: <span id="time-val">30</span>S</div></div>
+</div>
 
 <div id="settings-btn">
 <svg viewBox="0 0 24 24">
@@ -451,7 +457,6 @@ background: var(--notch);
 <rect x="2" y="10.5" width="20" height="3" rx="1.5" />
 <rect x="2" y="17" width="20" height="3" rx="1.5" />
 </svg>
-</div>
 </div>
 
 <div id="settings-modal">
